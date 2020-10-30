@@ -1,11 +1,10 @@
 (ns ^:figwheel-hooks ob.core
+  
   (:require-macros [cljs.core.async.macros :refer [go]])
   
   (:require
    
-   [ob.parse :refer [get-function-copy
-                     construct-tree-representations
-                     global-env]]
+   [ob.parse :refer [get-function-copy construct-tree-representations]]
    [ob.html-generator :refer [generate-html]]
    [ob.evaluation :as eval]
    [ob.environment :as env]
@@ -15,25 +14,19 @@
    [reagent.dom :as rdom]
    
    [clojure.string :as str]
-   
-   [cljs.tools.reader :refer [read-string]]
-   [cljs.js :refer [empty-state eval js-eval]]
    [cljs.core.async :refer [<! timeout]]))
-
-
-
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Animations
+
+(defn insert-n-breaks [n]
+  [:div (take n (repeat [:br]))])
 
 (defn cycle-n-times [env n f]
   ((apply comp (repeat n f)) env))
 
 (defn get-n-copies [n commands]
   (vec (mapcat identity (repeat n commands))))
-
                                        
 (defn execute-with-pauses [env transform pause]
   (fn [] (go (doseq [t @transform]
@@ -43,8 +36,6 @@
 
 (defn transforms->pipeline [& args]
   (vec (reduce concat (vec args))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Demonstration
@@ -91,8 +82,6 @@
                         #(eval/eval-reg % :dec)
                         #(env/set-style % :dec :color nil)
 
-
-                        
                         #(env/set-style % :base :color "purple")
                         #(eval/eval-expand % :base)
                         #(env/set-style % :body :color "black")
@@ -205,8 +194,7 @@
                                        (tag :cont-body
                                             ((tag :k k)
                                              (tag :mult (* (tag :v v)
-                                                           (tag :n n))))))))))
-                     )))))
+                                                           (tag :n n)))))))))))))))
 
 
 
@@ -220,31 +208,32 @@
         
         
         when-expanding [
-                     ;;   #(set-style % :pred :color "purple")
+                        ;;   #(set-style % :pred :color "purple")
                         #(eval/eval-reg % :pred)
-                     ;;   #(set-style % :pred :color nil)
+                        ;;   #(set-style % :pred :color nil)
                         
-                    ;;    #(set-style % :neg :color "purple")
+                        ;;    #(set-style % :neg :color "purple")
                         #(eval/eval-sub % :body :neg)
-                    ;;    #(set-style % :neg :color nil)
-               
-                   ;;     #(set-style % :dec :color "purple")
+                        ;;    #(set-style % :neg :color nil)
+                        
+                        ;;     #(set-style % :dec :color "purple")
                         #(eval/eval-reg % :dec)
-                   ;;     #(set-style % :dec :color nil)
-                       
-                   ;;     #(set-style % :base :color "purple")
+                        ;;     #(set-style % :dec :color nil)
+
+                        ;;   #(eval/eval-reg % :apply-k)
+                        ;;     #(set-style % :base :color "purple")
                         #(eval/eval-expand % :base)
-                   ;;     #(set-style % :base :color nil)
+                        ;;     #(set-style % :base :color nil)
                         ]
 
         base-case      [
-                   ;;     #(set-style % :pred :color "purple")
+                        ;;     #(set-style % :pred :color "purple")
                         #(eval/eval-reg % :pred)
-                   ;;     #(set-style % :pred :color "black")
-                      ;;  #(eval-sub % :body :pos)
+                        ;;     #(set-style % :pred :color "black")
+                        ;;  #(eval-sub % :body :pos)
                         #(eval/eval-fn-reduce % :cont :pos 1)
-                       ;;  #(eval-sub % :body :cont-body)
-                  ;;      #(set-style % :pos :color "green")
+                        ;;  #(eval-sub % :body :cont-body)
+                        ;;      #(set-style % :pos :color "green")
                         ]
         when-contracting [#(eval/eval-fn-reduce % :cont :mult 1)
                           ]
@@ -265,11 +254,14 @@
 (declare transform)
 (declare counter)
 
+(def button-style {:font-family "Courier"
+                   :border "3px solid black"
+                   :cursor "pointer"
+                   :font-size "15px"
+                   :font-weight "900"
+                   :background-image "url(./images/background.png)"})
+(def fs "15px")
 
-(def fs "18px")
-
-(defn insert-n-breaks [n]
-  [:div (take n (repeat [:br]))])
 
 (defn set-var-button [env kw]
   
@@ -296,9 +288,12 @@
 
 (defn create-input-fields-for-vars [env]
   (let [args (env/get-display @env :args)]
-    [:div (doall (map #(set-var-button env %1) (vec args)))]))
+    [:div
+     (doall
+      (map #(set-var-button env %1) (vec args)))]))
 
 (defn create-radio-button [funcname label env current transforms counter]
+  
   [:div
    
     [:input {:type "radio"
@@ -329,16 +324,7 @@
                                 (reset! pause (/ speed 100))))}
     ])
 
-(defn create-compute-button [env transform pause]
-  [:button
-   {:style {:font-family "Courier"
-            :border "3px solid black"
-            :cursor "pointer"
-            :font-size "15px"
-            :font-weight "900"
-            :background-image "url(./images/background.png)"}
-    :on-click (execute-with-pauses env transform pause)}
-   "Compute All"])
+
 
 (defn execute-incrementally [env transform counter]
   (fn [e]
@@ -346,29 +332,24 @@
       (swap! env tr)
       (swap! counter inc))))
 
+(defn create-compute-button [env transform pause]
+  [:button
+   {:style button-style
+    :on-click (execute-with-pauses env transform pause)}
+   "Compute All"])
+
 (defn create-next-button [env transform counter]
   [:button
-   {:style {:font-family "Courier"
-            :border "3px solid black"
-            :cursor "pointer"
-            :font-size "15px"
-            :font-weight "900"
-            :background-image "url(./images/background.png)"}
+   {:style button-style
     :on-click (execute-incrementally env transform counter)}
    "Next Step"])
 
 (defn create-prev-button [env]
    [:button
-   {:style {:font-family "Courier"
-            :border "3px solid black"
-            :cursor "pointer"
-            :font-size "15px"
-            :font-weight "900"
-            :background-image "url(./images/background.png)"}
+   {:style button-style
     :on-click (fn []
-                (do
-                  (swap! env env/revert-to-prior-version)
-                  (swap! counter dec)))}
+                (swap! env env/revert-to-prior-version)
+                (swap! counter dec))}
    "Revert"])
 
 (defn create-control-dashboard [env  counter]
@@ -403,14 +384,6 @@
      
      (insert-n-breaks 3)
 
-     [:h3 "Function Call"]
-    [:span {:style {:font-size fs :font-family "Courier" }}
-     (str (get @transform @counter))]
-
-     [:h3 "Display Map"]
-         [:span {:style {:font-size fs :font-family "Courier"}}
-          (str (env/get-display-map @env))]
-     
      ]))
 
 
@@ -426,14 +399,13 @@
 
 (defonce transforms (atom {'factorial factorial-transforms
                            'factorial-acc factorial-acc-transforms
-                           'factorial-cps factorial-cps-transforms}))
+                           'factorial-cps factorial-cps-transforms
+                           }))
 
 (defonce current (atom 'factorial))
 (defonce env (atom (env/new-env @current)))
 (defonce transform (atom nil))
 (defonce counter (atom 0))
-
-;;(js/alert @transform)
 
 (defn html []
   [:div {:style {:padding-left "10px" :padding-top "40px"}}
@@ -469,19 +441,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Agenda
-;; 1) Change timer to allow piping
-;; 2) Add reversion
-;; 3) Lambda evaulation
-;; 3) Add opacity styling
-;; 4) Add font size and speed ranges
-;; 
+;;
+;; - Change timer to allow piping
+;; - Reversion
+;; - Lambda evaulation
+;; - Opacity styling
+;; - Font size and speed ranges
+;;
+
+;; Topics
+;; - Continuations
+;; - Closures
+;; - Tree Navigation
+;; - Sorting and Searching
+
 
 ;; Let functions go offscreen
 ;; Make al functions return to the same place
 
 
-;; 1) Import
-;; 2) Style manipulation (opacity decay)
-;; 3) Switch indents to tabs
-
-;; Evaluation helpers
